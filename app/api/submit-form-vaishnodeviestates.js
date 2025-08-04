@@ -1,27 +1,33 @@
 import nodemailer from 'nodemailer';
 
+const allowedOrigins = [
+  'https://www.vaishnodeviestates.com',
+  'https://vaishnodeviestates.vercel.app',
+];
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
-  secure: false, // Use TLS
+  secure: false,
   auth: {
     user: 'marketing@vaishnodeviestates.com',
-    pass: 'ylxzkyyfbabjkgcl', // Consider using an App Password, not your real Gmail password
+    pass: 'ylxzkyyfbabjkgcl', // Use environment variables in production
   },
 });
 
 export default async function handler(req, res) {
-  // Handle CORS
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Replace * with specific domain in production
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight request
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(200).end(); // Handle preflight
   }
 
-  // Allow only POST method
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -37,12 +43,11 @@ export default async function handler(req, res) {
     form_source,
   } = req.body;
 
-  // Validate required fields
   if (!subject || subject.trim() === '') {
     return res.status(400).json({ message: 'Subject cannot be empty' });
   }
 
-  const source = form_source && form_source.trim() !== '' ? form_source : '';
+  const source = form_source?.trim() || '';
 
   const emailContent = `
     <p><strong>Form Source:</strong> ${source}</p>
@@ -52,13 +57,13 @@ export default async function handler(req, res) {
     <p><strong>Message:</strong><br>${message}</p>
   `;
 
-  const recipients = Array.isArray(additionalRecipients)
-    ? additionalRecipients.join(',') // comma-separated list
-    : 'info@vaishnodeviestates.com'; // fallback email
+  const allRecipients = Array.isArray(additionalRecipients)
+    ? additionalRecipients
+    : [];
 
   const mailOptions = {
     from: `"Vaishnodevi Estates" <marketing@vaishnodeviestates.com>`,
-    to: recipients,
+    to: allRecipients,
     subject,
     html: emailContent,
   };
@@ -67,9 +72,9 @@ export default async function handler(req, res) {
     if (client) {
       await transporter.sendMail(mailOptions);
     }
-    return res.status(200).json({ message: 'Email sent successfully' });
+    return res.status(200).send('Email sent successfully');
   } catch (error) {
     console.error('Email error:', error);
-    return res.status(500).json({ message: 'Failed to send email', error });
+    return res.status(500).json({ message: 'Failed to send email' });
   }
 }

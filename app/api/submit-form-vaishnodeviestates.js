@@ -15,13 +15,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { name, email, phone, message, subject, additionalRecipients, client } = req.body;
+  const { name, email, phone, message, subject, additionalRecipients, client, form_source } = req.body;
 
   if (!subject || subject.trim() === '') {
     return res.status(400).json({ message: 'Subject cannot be empty' });
   }
+  const source = form_source && form_source.trim() !== "" ? form_source : "";
 
   const emailContent = `
+    <p><strong>Form Source:</strong> ${source}</p>
     <p><strong>Name:</strong> ${name}</p>
     <p><strong>Email:</strong> ${email}</p>
     <p><strong>Phone:</strong> ${phone}</p>
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
   const mailOptions = {
     from: `"Vaishnodevi Estates" <${process.env.SMTP_USER}>`,
     to: allRecipients,
-    subject: `Contact Form Submission: ${subject}`,
+    subject: `${subject}`,
     html: emailContent,
   };
 
@@ -46,6 +48,6 @@ export default async function handler(req, res) {
     return res.status(200).send("Email sent successfully");
   } catch (error) {
     console.error('Email error:', error);
-    return res.status(500).send('Failed to send email');
+    return res.status(500).json({ message: 'Failed to send email' });
   }
 }
